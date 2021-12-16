@@ -42,7 +42,7 @@
   {:gamma (buildFromBinary (buildGamma state)) :epsilon (buildFromBinary (buildEpsilon state))})
 
 (defn calcValue [state]
-  (* (:gamma state) (:epsilon state )))
+  (* (:gamma state) (:epsilon state)))
 (->>
  (Day01/lazy-file-lines filename)
  (map buildSequenceOfInts)
@@ -51,31 +51,29 @@
  (calcValue))
 
 (defn buildMsgSet [ourList]
-(reduce (fn [state first & rest]
-          (cond
-            (= 0 first) {:msg0 (conj (:msg0 state) rest) :msg1 (:msg1 state)}
-            :else       {:msg0 (:msg0 state) :msg1 (conj (:msg0 state) rest)}))
-        [:msg0 () :msg1 ()] ourList))
+  (reduce (fn [state first & rest]
+            (cond
+              (= 0 first) {:msg0 (conj (:msg0 state) rest) :msg1 (:msg1 state)}
+              :else       {:msg0 (:msg0 state) :msg1 (conj (:msg0 state) rest)}))
+          [:msg0 () :msg1 ()] ourList))
 (buildMsgSet (Day01/lazy-file-lines filename))
 
 (def quickTest (buildSequenceOfInts testval))
 ((fn [state first & rest]
-  (cond
-    (= 0 first) {:msg0 (cons (:msg0 state) rest) :msg1 (:msg1 state)}
-    :else       {:msg0 (:msg0 state) :msg1 rest})) {:msg0 () :msg1 ()} quickTest) 
+   (cond
+     (= 0 first) {:msg0 (cons (:msg0 state) rest) :msg1 (:msg1 state)}
+     :else       {:msg0 (:msg0 state) :msg1 rest})) {:msg0 () :msg1 ()} quickTest)
 
 (defn evaluateMessages
   "build list of messages starting with 0 or 1 up to state"
   [state [onemsg & rest]]
-    (if (= state nil)
-      (if (= 0 onemsg)
-        {:msg0 (list rest) :msg1 ()}
-        {:msg0 () :msg1 (list rest)})
-      (if (= 0 onemsg)
-        {:msg0 (conj (:msg0 state) rest) :msg1 (:msg1 state)}
-        {:msg0 (:msg0 state) :msg1 (conj (:msg1 state) rest)})
-    )
-)
+  (if (= state nil)
+    (if (= 0 onemsg)
+      {:msg0 (list rest) :msg1 ()}
+      {:msg0 () :msg1 (list rest)})
+    (if (= 0 onemsg)
+      {:msg0 (conj (:msg0 state) rest) :msg1 (:msg1 state)}
+      {:msg0 (:msg0 state) :msg1 (conj (:msg1 state) rest)})))
 (def quickTest2 '(1 1 1))
 (evaluateMessages nil quickTest)
 (evaluateMessages *1 quickTest2)
@@ -91,37 +89,59 @@
     (gtOrLt (count (:msg0 newmsg)) (count (:msg1 newmsg))) {:msg (conj (:msg oldmsg) 0) :values (:msg0 newmsg)}
     (gtOrLt (count (:msg1 newmsg)) (count (:msg0 newmsg))) {:msg (conj (:msg oldmsg) 1) :values (:msg1 newmsg)}
     (gtOrLt 0 1)                                           {:msg (conj (:msg oldmsg) 0) :values (:msg0 newmsg)}
-    :else                                                  {:msg (conj (:msg oldmsg) 1) :values (:msg1 newmsg)}
-    )
-  )
+    :else                                                  {:msg (conj (:msg oldmsg) 1) :values (:msg1 newmsg)}))
 
 (buildMsgAndSetValues < {:msg [1] :values (list (list 1 1))} {:msg1 (list nil) :msg0 ()})
+
+(defn buildFinalMessage [iter]
+  (reduce conj (:msg iter) (first (:values iter))))
 
 (defn evaluateDiagnosticLifeSupport
   "Function used to help build life support values"
   [gtOrLt listOfBinaryDigitLists]
   (loop [iter {:msg [] :values listOfBinaryDigitLists}]
-    (if (allValuesNil (:values iter))
-      (:msg iter)
+    (cond
+      (allValuesNil (:values iter)) (:msg iter)
+      (= 1 (count (:values iter)))  (buildFinalMessage iter)
+      :else
       (recur
-        (let [newstate (reduce evaluateMessages nil (:values iter))]
-          (buildMsgAndSetValues gtOrLt iter newstate)
-          )
-       )
-      )
-    )
-  )
+       (let [newstate (reduce evaluateMessages nil (:values iter))]
+         (buildMsgAndSetValues gtOrLt iter newstate))))))
+
 (def inputs (map buildSequenceOfInts (Day01/lazy-file-lines filename)))
 (def oxygenRating (buildFromBinary (evaluateDiagnosticLifeSupport > inputs)))
-#_(def co2ScrubberRating (buildFromBinary (evaluateDiagnosticLifeSupport < inputs)))
-#_(* oxygenRating co2ScrubberRating)
+
+(def iter0 {:msg [] :values inputs})
+(def iter1 (let [newstate (reduce evaluateMessages nil (:values iter0))]
+             (buildMsgAndSetValues < iter0 newstate)))
+(def iter2 (let [newstate (reduce evaluateMessages nil (:values iter1))]
+             (buildMsgAndSetValues < iter1 newstate)))
+(def iter3 (let [newstate (reduce evaluateMessages nil (:values iter2))]
+             (buildMsgAndSetValues < iter2 newstate)))
+(def iter4 (let [newstate (reduce evaluateMessages nil (:values iter3))]
+             (buildMsgAndSetValues < iter3 newstate)))
+(def iter5 (let [newstate (reduce evaluateMessages nil (:values iter4))]
+             (buildMsgAndSetValues < iter4 newstate)))
+(def iter6 (let [newstate (reduce evaluateMessages nil (:values iter5))]
+             (buildMsgAndSetValues < iter5 newstate)))
+(def iter7 (let [newstate (reduce evaluateMessages nil (:values iter6))]
+             (buildMsgAndSetValues < iter6 newstate)))
+(def iter8 (let [newstate (reduce evaluateMessages nil (:values iter7))]
+             (buildMsgAndSetValues < iter7 newstate)))
+(def iter9 (let [newstate (reduce evaluateMessages nil (:values iter8))]
+             (buildMsgAndSetValues < iter8 newstate)))
+(def iter10 (let [newstate (reduce evaluateMessages nil (:values iter9))]
+              (buildMsgAndSetValues < iter9 newstate)))
+(evaluateDiagnosticLifeSupport < inputs)
+(def co2ScrubberRating (buildFromBinary (evaluateDiagnosticLifeSupport < inputs)))
+(* oxygenRating co2ScrubberRating)
 #_(do
-  (let [inputs (map buildSequenceOfInts (Day01/lazy-file-lines filename))]
-    (let [oxygenRating (buildFromBinary (evaluateDiagnosticLifeSupport > inputs))]
-      (let [co2ScrubberRating (buildFromBinary (evaluateDiagnosticLifeSupport < inputs))]
-      (* oxygenRating co2ScrubberRating)))))
-#_ (Day01/lazy-file-lines filename)
-#_  (map buildSequenceOfInts)
+    (let [inputs (map buildSequenceOfInts (Day01/lazy-file-lines filename))]
+      (let [oxygenRating (buildFromBinary (evaluateDiagnosticLifeSupport > inputs))]
+        (let [co2ScrubberRating (buildFromBinary (evaluateDiagnosticLifeSupport < inputs))]
+          (* oxygenRating co2ScrubberRating)))))
+#_(Day01/lazy-file-lines filename)
+#_(map buildSequenceOfInts)
 
 #_(evaluateDiagnosticLifeSupport >)
 #_(reduce evaluateMessages nil)
