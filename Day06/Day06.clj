@@ -46,7 +46,7 @@
    (incrementValuesSevenDays)
    (incrementValuesSevenDays)))
 
-(defn increment256Days
+#_(defn increment256Days
   "increment the pattern of lanternfish 256 days"
   [values]
   (->>
@@ -60,24 +60,8 @@
 
 (count (increment80Days testValues))
 (count (increment80Days (getValues (first puzzleInput))))
-(count (increment256Days testValues))
-(count (increment256Days '(1)))
-
-(defn resultAfter8Days
-  "increment a pattern for 8 days"
-  [value]
-  (incrementValuesSevenDays (incrementValuesOneDay (list value))))
-
-(resultAfter8Days 0)
-(resultAfter8Days 1)
-(resultAfter8Days 2)
-(resultAfter8Days 3)
-(resultAfter8Days 4)
-(resultAfter8Days 5)
-(resultAfter8Days 6)
-(resultAfter8Days 7)
-(resultAfter8Days 8)
-
+#_(count (increment256Days testValues))  ; This fails throwing the heap out the window
+#_(count (increment256Days '(1)))        ; Likewise, even this fails miserably
 
 (defn buildAnswerDetails
   "builds a map of value to number of instances from the value list presented"
@@ -98,7 +82,7 @@
 (let [testValue '{3 2 4 1 1 1 2 1}]
   (incrementLifecyclesOneDay testValue))
 (incrementLifecyclesOneDay '{3 2 4 1 1 1 2 1})
-(incrementLifecyclesOneDay *1)
+#_(incrementLifecyclesOneDay *1)
 
 (defn CalculateStateOfLanternfishForNumDays
   "Given an input value and a number of days to calculate for, produces the state of lanternfish"
