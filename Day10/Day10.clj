@@ -44,18 +44,40 @@
   "Determine the score for the syntax corruption in the given line"
   [line]
   (let [openers (set (seq "[(<{"))]
-  ((reduce (fn [state letter] 
+  (reduce (fn [state letter] 
             (cond (not= 0 (:score state))     state
                   (contains? openers letter)  (update state :seq conj letter)
                   :else                       (determineIfMatch state letter)
-                  )) {:score 0 :seq ()} (seq line)) :score)))
+                  )) {:score 0 :seq ()} (seq line))))
 
-(defn determineScoreForInputLines
+(defn determineSyntaxCorruptionScoreForInputLines
   "Determines the sum of the score across the input lines"
   [inputLines]
-  (reduce (fn [score line] (+ score (scoreSyntaxCorruption line))) 0 inputLines))
+  (reduce (fn [score line] (+ score (:score (scoreSyntaxCorruption line)))) 0 inputLines))
 
 (scoreSyntaxCorruption (first testInput))
-(determineScoreForInputLines testInput)
-(determineScoreForInputLines puzzleInput)
-(set (seq "[(<{"))
+(determineSyntaxCorruptionScoreForInputLines testInput)
+(determineSyntaxCorruptionScoreForInputLines puzzleInput)
+
+(defn calculateAutoCompleteScore
+  "Calculate the auto-complete score for a syntax-checked string remainder"
+  [letters]
+  (let [lettermapping {'\( 1 '\[ 2 '\{ 3 '\< 4}]
+    (reduce (fn [score letter] (+ (lettermapping letter) (* 5 score))) 0 letters)))
+
+(defn determineAutoCorrectScoreForInputLines
+  "Determines the average autocorrect score for input lines"
+  [inputLines]
+  (reduce (fn [scores line]
+            (let [syntaxScoreState (scoreSyntaxCorruption line)]
+              (cond (= 0 (:score syntaxScoreState)) (conj scores (calculateAutoCompleteScore (:seq syntaxScoreState)))
+                    :else scores))
+            ) [] inputLines))
+
+(defn getMiddleOfSortedScores
+  "Get the middle value of the sorted scores"
+  [scores]
+  (nth scores (quot (count scores) 2)))
+
+(getMiddleOfSortedScores (sort (determineAutoCorrectScoreForInputLines testInput)))
+(getMiddleOfSortedScores (sort (determineAutoCorrectScoreForInputLines puzzleInput)))
