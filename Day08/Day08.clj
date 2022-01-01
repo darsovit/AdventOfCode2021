@@ -15,12 +15,10 @@
 (defn readValues
   "Read the inputs and build values that can be used"
   [lines]
-   (reduce (fn [state line]
-             (let [[inputs outputs] (clojure.string/split line #" \| ")]
-               (conj state {:inputs  (reduce conj () (clojure.string/split inputs #" "))
-                            :outputs (reduce conj () (clojure.string/split outputs #" "))}
-                     ))) () lines)
-   )
+  (reduce (fn [state line]
+            (let [[inputs outputs] (clojure.string/split line #" \| ")]
+              (conj state {:inputs  (reduce conj [] (clojure.string/split inputs #" "))
+                           :outputs (reduce conj [] (clojure.string/split outputs #" "))}))) [] lines))
 (def testValues (readValues testInput))
 
 (defn countNumOfOutputs1478
@@ -29,14 +27,13 @@
   (reduce (fn [outersum object]
             (+ outersum
                (reduce (fn [innersum outputPart]
-                         (+ innersum 
+                         (+ innersum
                             (cond (= 2 (count outputPart)) 1 ; Represents a 1
                                   (= 3 (count outputPart)) 1 ; Represents a 7
                                   (= 4 (count outputPart)) 1 ; Represents a 4
                                   (= 7 (count outputPart)) 1 ; Represents a 8
                                   :else                      0 ; Anything non-unique
-                                  )) ) 0 (:outputs object))
-             )) 0 values))
+                                  )))0 (:outputs object)))) 0 values))
 (countNumOfOutputs1478 (readValues testInput))
 (countNumOfOutputs1478 (readValues puzzleInput))
 
@@ -56,7 +53,7 @@
 ; Of 6 segments: (cagedb doesn't have middle letter (f)) so this is 0
 ; 9 has (ab,f) of the 6 segments left, so (cefabd) is 9
 ; 6 is only 6 segment left (cdfgeb)
-; Comparing 6 and 9, 6 has g and 9 has a g is bottom left, a is top right
+; Comparing 6 and 9, 6 has 'g' and 9 has 'a': g is bottom left, a is top right
 ; Of the remaining 5 segments (cdfbe,gcdfa), 2 will have g and a; 2 is gcdfa
 ; cdfbe is 5
 
@@ -71,7 +68,7 @@
                   (= 7 (count inputValue)) (update state :8 (constantly (set inputValue)))
                   (= 5 (count inputValue)) (update state :fivesegments conj (set inputValue))
                   (= 6 (count inputValue)) (update state :sixsegments conj  (set inputValue))))
-            {:fivesegments () :sixsegments ()} values))
+          {:fivesegments () :sixsegments ()} values))
 
 (determineTop (buildStateToStart (:inputs (first testValues))))
 
@@ -83,19 +80,93 @@
 (defn determineThree
   "Of the unknown five-segments, determine which represents the value 3"
   [state]
-  (update 
-    (update state :3
-            (constantly
-             (reduce (fn [substate value]
-                       (cond (not= nil substate) substate
-                             (= 3 (count (clojure.set/difference value (:1 state)))) value
-                             :else nil)) nil (:fivesegments state))))
-     :fivesegments (fn [values] (remove #(= (:3 state) %) values))))
-(determineThree *2)
+  (let [newstate
+   (update state :3
+           (constantly
+            (reduce (fn [substate value]
+                      (cond (not= nil substate) substate
+                            (= 3 (count (clojure.set/difference value (:1 state)))) value
+                            :else nil)) nil (:fivesegments state))))]
+    (update newstate :fivesegments (fn [values] (remove #(= (:3 newstate) %) values)))))
+
+(defn determineMiddle
+  "Take the set values for 4, 1, and 3 and determine the middle segment value"
+  [state]
+  (update state :middle (constantly (clojure.set/intersection (clojure.set/difference (:4 state) (:1 state)) (:3 state)))))
+
+(defn determineZero
+  "Of the uknown six-segments determine which represents the 0 value by not having the middle"
+  [state]
+  (let [newstate
+        (update state :0
+                (constantly
+                 (reduce (fn [substate value]
+                           (cond (not= nil substate) substate
+                                 (= 0 (count (clojure.set/intersection value (:middle state)))) value
+                                 :else nil)) nil (:sixsegments state))))]
+    (update newstate :sixsegments (fn [values] (remove #(= (:0 newstate) %) values)))
+    ))
+
+(defn determineNineAndSix
+  "Of the unknown six-segments left (6,9) 9 will have all of (1) in it"
+  [state]
+  (reduce (fn [substate value]
+                           (cond (= 2 (count (clojure.set/intersection value (:1 state)))) (update substate :9 (constantly value))
+                                 :else                                                     (update substate :6 (constantly value))))
+    state (:sixsegments state)))
+
+(defn determineTwoAndFive
+  "Of the unknown five-segments left (5,2), 5 will have all of its segments in 9 or 6"
+  [state]
+  (reduce (fn [substate value]
+            (cond (= 5 (count (clojure.set/intersection value (:9 state)))) (update substate :5 (constantly value))
+                  :else                                                     (update substate :2 (constantly value))))
+    state (:fivesegments state)))
+
+  
+(defn setupSetToValueMap
+  "Set up the set to value mapping"
+  [state]
+  {(:0 state) 0
+   (:1 state) 1
+   (:2 state) 2
+   (:3 state) 3
+   (:4 state) 4
+   (:5 state) 5
+   (:6 state) 6
+   (:7 state) 7
+   (:8 state) 8
+   (:9 state) 9}
+  )  
+
 (defn determineSetValuesFromInputs
   "Determine the set values from the input values"
   [objects]
   (->>
    (buildStateToStart (:inputs objects))
    (determineTop)
-   (determineThree)))
+   (determineThree)
+   (determineMiddle)
+   (determineZero)
+   (determineNineAndSix)
+   (determineTwoAndFive)
+   (setupSetToValueMap)))
+
+(defn calculateOutputValue
+  "Given an input value map and output segments, calculate output value"
+  [inputMap object]
+  (reduce (fn [substate digit] (+ (get inputMap (set digit)) (* 10 substate))) 0 (:outputs object)))
+
+(determineSetValuesFromInputs (first testValues))
+(:outputs (first testValues))
+(calculateOutputValue (determineSetValuesFromInputs (first testValues)) (first testValues))
+(first testValues)
+
+(defn sumAllInputValues
+  "given some input data, determine number inputs and calculate outputs, multiplying together"
+  [inputs]
+  (reduce (fn [value oneBank]
+            (+ value (calculateOutputValue (determineSetValuesFromInputs oneBank) oneBank))) 0 inputs))
+
+(sumAllInputValues testValues)
+(sumAllInputValues (readValues puzzleInput))
