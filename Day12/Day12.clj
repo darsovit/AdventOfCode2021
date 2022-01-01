@@ -9,7 +9,7 @@
                   "b-d"
                   "A-end"
                   "b-end"))
-(def test1 (list testInput1, 10))
+(def test1 {:input testInput1 :problem1 10 :problem2 36})
 
 (defn updateGraphWithEdge
   "Update graph with the given directed edge"
@@ -55,7 +55,8 @@
   [state pt1 pt2]
   (updateGraphWithEdge (updateGraphWithEdge (updateGraphWithNodes state (list pt1 pt2)) pt1 pt2) pt2 pt1))
 
-(updateStateWithConnection {:edges {} :nodes #{} :largenodes #{}} "A" "b")
+(comment
+  (updateStateWithConnection {:edges {} :nodes #{} :largenodes #{}} "A" "b"))
 
 (defn buildInputState
   "Interpret the input lines turning into a graph"
@@ -68,38 +69,43 @@
 
 (defn validNextNodes
   "Determine which of the next nodes are valid based on details in the graph and path taken so far"
-  [graph path]
-  (let [nodes (get-in graph (list :edges (last path)))]
+  [graph pathProgress]
+  (let [nodes (get-in graph (list :edges (last (:path pathProgress))))]
     (for [node nodes
-          :when (or (contains? (:largenodes graph) node) (not= node (some #{node} path)))] node)))
+          :let [isLargeNode (contains? (:largenodes graph) node)
+                isRepeatedSmall (and (= false isLargeNode) (= node (some #{node} (:path pathProgress))))
+                repeatedSmallAllowed (:canRevisitSmall pathProgress)]
+          :when (or isLargeNode
+                    (= false isRepeatedSmall)
+                    repeatedSmallAllowed)]
+      (list node isRepeatedSmall))))
+
+(let [qt (buildInputState (:input test1))]
+  (validNextNodes qt {:path ["start" "A" "c" "A"] :canRevisitSmall true}))
 
 (defn subtraverseGraph
   "Given a graph and path, traverse the next steps possible"
-  [graph path]
-  (cond (= (last path) "end") (list path)
+  [graph pathProgress]
+  (cond (= (last (:path pathProgress)) "end") (list pathProgress)
         :else
-        (let [nextnodes (validNextNodes graph path)]
+        (let [nextnodes (validNextNodes graph pathProgress)]
           (loop [[firstnext & rightnodes] nextnodes
                  results ()]
             (cond (= nil firstnext) results
-                  :else (recur rightnodes (concat results (subtraverseGraph graph (conj path firstnext)))))
-            )
-          )
-        )
-  )
+                  :else (recur rightnodes (concat results (subtraverseGraph graph (update (cond (= false (last firstnext)) pathProgress
+                                                                                                :else (update pathProgress :canRevisitSmall (constantly false))) :path conj (first firstnext))))))))))
 
 (defn traverseGraph
-  "Given a graph representing a network, calculate all of the traversals from start to end following the rules that only large nodes can be visited more than once"
-  [graph]
-  (let [paths (subtraverseGraph graph '["start"])]
-    {:paths paths :num (count paths)}
-    ))
+  "Given a graph representing a network and a value for canRevisitSmall, calculate all of the traversals from start to end following the rules that only large nodes can be visited more than once"
+  [graph canRevisitSmall]
+  (let [paths (subtraverseGraph graph {:path '["start"] :canRevisitSmall canRevisitSmall})]
+    {:num (count paths) :paths paths}))
 
+(traverseGraph (buildInputState (:input test1)) false)
 (defn validateTest
   "Given a test set (input and expected count of paths) ensure that traversing the graph results in the expected count"
   [testInput]
-  (= (last testInput) (:num (traverseGraph (buildInputState (first testInput)))))
-  )
+  (= (:problem1 testInput) (:num (traverseGraph (buildInputState (:input testInput)) false))))
 
 (def testInput2 '("dc-end"
                   "HN-start"
@@ -111,7 +117,7 @@
                   "kj-sa"
                   "kj-HN"
                   "kj-dc"))
-(def test2 (list testInput2, 19))
+(def test2 {:input testInput2 :problem1 19 :problem2 103})
 (def testInput3 '("fs-end"
                   "he-DX"
                   "fs-he"
@@ -130,9 +136,21 @@
                   "zg-he"
                   "pj-fs"
                   "start-RW"))
-(def test3 (list testInput3, 226))
+(def test3 {:input testInput3 :problem1 226 :problem2 3509})
 
 (validateTest test1)
 (validateTest test2)
 (validateTest test3)
-(:num (traverseGraph (buildInputState puzzleInput)))
+
+(:num (traverseGraph (buildInputState puzzleInput) false))
+
+(defn validateTest2
+  "Given a test set, ensure that traversing the graph results in the expected count"
+  [testInput]
+  (= (:problem2 testInput) (:num (traverseGraph (buildInputState (:input testInput)) true))))
+
+(validateTest2 test1)
+(validateTest2 test2)
+(validateTest2 test3)
+
+(:num (traverseGraph (buildInputState puzzleInput) true))
